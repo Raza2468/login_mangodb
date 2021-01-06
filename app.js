@@ -70,7 +70,7 @@ function sin() {
 
     request.send(JSON.stringify(obj))
     request.onreadystatechange = () => {
-        let JSONres = JSON.parse(request.responseText)
+        // let JSONres = JSON.st(request.responseText)
         console.log(request.responseText);
         if (request.readyState === 4) {
             // alert(JSONres.message)

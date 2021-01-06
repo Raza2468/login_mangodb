@@ -11,8 +11,9 @@ let cors = require("cors");
 bodyParser = require('body-parser');
 var morgan = require("morgan");
 const mongoose = require("mongoose");
-var bcrypt = require("bcrypt-inzi")
-
+var bcrypt = require("bcrypt-inzi");
+var jwt = require('jsonwebtoken');
+var ServerSecretKey = process.env.SECRET || "123"
 /////////////////////////////////////////////////////////////////////////////////////////////////
 // let dbURI = "mongodb+srv://dbuser:dbpassword@cluster0.9qvbs.mongodb.net/abc-database";
 let dbURI = "mongodb+srv://faiz:2468@mundodb.lkd4g.mongodb.net/ttest?retryWrites=true&w=majority";
@@ -170,29 +171,83 @@ appxml.post('/login', (req, res, next) => {
             `please send email and passwod in json body.
             e.g:
              {
-            "email": "malikasinger@gmail.com",
+            "email": "Razamalik@gmail.com",
             "password": "abc",
          }`)
-         return;
-    } 
-    getUser.findOne({ email: req.body.email},
-        function (err,user){
+        return;
+    }
+    getUser.findOne({ email: req.body.email },
+        function (err, user) {
             if (err) {
-                res.status(500).send({message:"an error accure"})
-            } else if(user){
-                bcrypt.varifyHash(req.body.password,user.password).then(result => {
+                res.status(500).send({ message: "an error accure" })
+            } else if (user) {
+                bcrypt.varifyHash(req.body.password, user.password).then(result => {
                     if (result) {
-                        console.log("matched");
+                        // console.log("matched");
+                        var token = jwt.sign({
+                            id: user._id,
+                            name: user.name,
+                            email: user.email,
+                        }, 'ServerSecretKey');
+                        res.send({
+                            message: "login success",
+                            user: {
+                                name: user.name,
+                                email: user.email,
+                                phone: user.phone,
+                            },
+                            token: token
+                        })
                     } else {
                         console.log("not matched");
+                        res.status(401).send({
+                            message: "incorrect password"
+                        })
                     }
                 })
+            } else {
+                res.status(403).send({
+                    message: "user not found"
+                });
             }
         }
-        )
-
-
+    )
 })
+// ==========================================>C5reat Login COmplet $$ /////
+
+// ==========================================>Start Get Profile /////
+appxml.get("/profile", (req, res, next) => {
+
+    if (!req.headers.token) {
+        res.status(403).send(`
+            please provide token in headers.
+            e.g:
+            {
+                "token": "h2345jnfiuwfn23423...kj345352345"
+            }`)
+        return;
+    }
+
+    var declareData = jwt.verify(req.headers.token,ServerSecretKey);
+    console.log("declareData",declareData)
+    userModel.findById(declareData.id, 'name email phone gender createdOn',
+    function (err, doc) {
+
+        if (!err) {
+
+            res.send({
+                profile: doc
+            })
+        } else {
+            res.status(500).send({
+                message: "server error"
+            })
+        }
+
+    })
+})
+
+
 // appxml.post('/login', (req, res, next) => {
 
 //     var flag = false;
@@ -224,7 +279,7 @@ appxml.post('/login', (req, res, next) => {
 //         })
 //     }
 // })
-// ==========================================>C5reat Login COmplet $$ /////
+
 
 // ==========================================>Server /////
 appxml.listen(PORT, () => {
